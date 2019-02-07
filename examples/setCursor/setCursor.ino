@@ -101,4 +101,4 @@ void loop() {
   delay(1000);
   // increment the letter:
   thisChar++;
-}
+} 
