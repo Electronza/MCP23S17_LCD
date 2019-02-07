@@ -1,25 +1,32 @@
 /*
- STEMMA_LiquidCrystal Library - TextDirection
+  MCP23S17 LCD Library - setCursor
 
- Demonstrates the use a 16x2 LCD display.  The STEMMA_LiquidCrystal
+ Demonstrates the use a 16x2 LCD display.  The MCP23S17
  library works with all LCD displays that are compatible with the
  Hitachi HD44780 driver. There are many of them out there, and you
  can usually tell them by the 16-pin interface.
 
- This sketch demonstrates how to use leftToRight() and rightToLeft()
- to move the cursor.
+ This sketch prints to all the positions of the LCD using the
+ setCursor() method:
 
- The circuit:
-  * LCD RS pin to digital pin 12
-  * LCD Enable pin to digital pin 11
-  * LCD D4 pin to digital pin 5
-  * LCD D5 pin to digital pin 4
-  * LCD D6 pin to digital pin 3
-  * LCD D7 pin to digital pin 2
-  * LCD R/W pin to ground
-  * 10K resistor:
-  * ends to +5V and ground
-  * wiper to LCD VO pin (pin 3)
+ The LCD can be connected either to GPIO port A or B of MCP23S17
+ NOTE: LCD works in 4-bit mode only and it requires 
+ the following connections:
+
+ * LCD D7 pin  to GPx7
+ * LCD D6 pin  to GPx6
+ * LCD D5 pin  to GPx5
+ * LCD D4 pin  to GPx4
+ * LCD EN pin  to GPx3
+ * LCD RS pin  to GPx2
+ * LCD R/W pin to ground
+ * LCD VSS pin to ground
+ * LCD VCC pin to 5V
+ * 10K resistor:
+ * ends to +5V and ground
+ * wiper to LCD VO pin (pin 3)
+ 
+ Where GPx is either GPA or GPB of MCP23S17
 
  Library originally added 18 Apr 2008
  by David A. Mellis
@@ -31,57 +38,59 @@
  by Tom Igoe
  modified 7 Nov 2016
  by Arturo Guadalupi
+ modified 7 Feb 2019
+ by Teodor Costachioiu (https://electronza.com)
 
  This example code is in the public domain.
 
- http://www.arduino.cc/en/Tutorial/STEMMA_LiquidCrystalTextDirection
+ http://electronza.com/mcp23s17-lcd-library
 
 */
 
 // include the library code:
-#include <STEMMA_LiquidCrystal.h>
+#include <MCP23S17_LCD.h>
 
-STEMMA_LiquidCrystal lcd;
+/* The LCD library is initialized as follows:
+ * MCP23S17_LCD(uint8_t rst, uint8_t cs, uint8_t PORT);
+ * rst  - RST pin for MCP23S17
+ * cs   - CS pin for MCP23S17 
+ * PORT - GPIO port of MCP23S17, where the LCD is connected
+ * PORT can be either PORT A or PORTB 
+ * 
+ * Example for MikroElektronika Expand click, connected via
+ * Arduino Uno Click shield, in mikroBUS socket #1
+ * and configured via J3 for 5V operation:
+ * https://www.mikroe.com/expand-click
+ * https://www.mikroe.com/arduino-uno-click-shield
+ * 
+ * MCP23S17_LCD lcd(A3, 10, PORTB);
+*/
 
-int thisChar = 'a';
+MCP23S17_LCD lcd(A3, 10, PORTB);
+
+// these constants won't change.  But you can change the size of
+// your LCD using them:
+const int numRows = 2;
+const int numCols = 16;
 
 void setup() {
   // set up the LCD's number of columns and rows:
-  lcd.begin(16, 2);
-  // turn on the cursor:
-  lcd.cursor();
+  lcd.begin(numCols, numRows);
 }
 
 void loop() {
-  // reverse directions at 'm':
-  if (thisChar == 'm') {
-    // go right for the next letter
-    lcd.rightToLeft();
+  // loop from ASCII 'a' to ASCII 'z':
+  for (int thisLetter = 'a'; thisLetter <= 'z'; thisLetter++) {
+    // loop over the columns:
+    for (int  thisRow = 0; thisRow < numRows; thisRow++) {
+      // loop over the rows:
+      for (int thisCol = 0; thisCol < numCols; thisCol++) {
+        // set the cursor position:
+        lcd.setCursor(thisCol, thisRow);
+        // print the letter:
+        lcd.write(thisLetter);
+        delay(200);
+      }
+    }
   }
-  // reverse again at 's':
-  if (thisChar == 's') {
-    // go left for the next letter
-    lcd.leftToRight();
-  }
-  // reset at 'z':
-  if (thisChar > 'z') {
-    // go to (0,0):
-    lcd.home();
-    // start again at 0
-    thisChar = 'a';
-  }
-  // print the character
-  lcd.write(thisChar);
-  // wait a second:
-  delay(1000);
-  // increment the letter:
-  thisChar++;
 }
-
-
-
-
-
-
-
-
