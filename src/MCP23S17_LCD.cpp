@@ -5,8 +5,6 @@
 #include <inttypes.h>
 #include "Arduino.h"
 
-//  de refacut
-
 // When the display powers up, it is configured as follows:
 //
 // 1. Display clear
@@ -314,10 +312,10 @@ void MCP23S17_LCD::expander_setup(void){
 	// 5. Debugging only
 	// This code will briefly turn on pin 0 of LCD port
 	// That pin is used to trigger my Saleae logic level analyzer
-	expander_sendByte(_port, 1);	
-	delayMicroseconds(50);
-	expander_sendByte(_port, 0);	
-	delayMicroseconds(50);
+	//expander_sendByte(_port, 1);	
+	//delayMicroseconds(50);
+	//expander_sendByte(_port, 0);	
+	//delayMicroseconds(50);
 }
 
 
