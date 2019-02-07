@@ -1,3 +1,4 @@
+#ifndef MCP23S17_LCD_h
 #include "MCP23S17_LCD.h"
 
 #include <stdio.h>
