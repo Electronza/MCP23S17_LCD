@@ -10,9 +10,9 @@ http://www.arduino.cc/en/Reference/LiquidCrystal
 == License ==
 
 
-Copyright (C) 2006-2008 Hans-Christoph Steiner. All rights reserved.
-Copyright (C) 2010 Arduino LLC. All right reserved.
-Copyright (C) 2019 Teodor Costachioiu. All right reserved.
+Copyright (C) 2006-2008 Hans-Christoph Steiner. All rights reserved. 
+Copyright (C) 2010 Arduino LLC. All right reserved. 
+Copyright (C) 2019 Teodor Costachioiu. All right reserved. 
 
 This library is free software; you can redistribute it and/or
 modify it under the terms of the GNU Lesser General Public
