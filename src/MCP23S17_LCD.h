@@ -1,339 +1,139 @@
 #ifndef MCP23S17_LCD_h
-#include "MCP23S17_LCD.h"
+#define MCP23S17_LCD_h
 
-#include <stdio.h>
-#include <string.h>
 #include <inttypes.h>
-#include "Arduino.h"
+// MCP23S17 uses SPI
+#include <SPI.h>
+#include "Print.h"
 
-//  de refacut
+// defines for MCP23S17
+#define PORTA  0x14
+#define PORTB  0x15
+#define IODIRA 0x00
+#define IODIRB 0x01
+#define IOCON  0x0A 
+// Control byte and configuration register information - Control Byte: "0100 A2 A1 A0 R/W" -- W=0
+#define    OPCODEW       (0b01000000)  // Opcode for MCP23S17 with LSB (bit0) set to write (0), address OR'd in later, bits 1-3
+#define    OPCODER       (0b01000001)  // Opcode for MCP23S17 with LSB (bit0) set to read (1), address OR'd in later, bits 1-3
 
-// When the display powers up, it is configured as follows:
-//
-// 1. Display clear
-// 2. Function set: 
-//    DL = 1; 8-bit interface data 
-//    N = 0; 1-line display 
-//    F = 0; 5x8 dot character font 
-// 3. Display on/off control: 
-//    D = 0; Display off 
-//    C = 0; Cursor off 
-//    B = 0; Blinking off 
-// 4. Entry mode set: 
-//    I/D = 1; Increment by 1 
-//    S = 0; No shift 
-//
-// Note, however, that resetting the Arduino doesn't reset the LCD, so we
-// can't assume that its in that state when a sketch starts (and the
-// MCP23S17_LCD constructor is called).
+// commands
+#define LCD_CLEARDISPLAY 0x01
+#define LCD_RETURNHOME 0x02
+#define LCD_ENTRYMODESET 0x04
+#define LCD_DISPLAYCONTROL 0x08
+#define LCD_CURSORSHIFT 0x10
+#define LCD_FUNCTIONSET 0x20
+#define LCD_SETCGRAMADDR 0x40
+#define LCD_SETDDRAMADDR 0x80
+
+// flags for display entry mode
+#define LCD_ENTRYRIGHT 0x00
+#define LCD_ENTRYLEFT 0x02
+#define LCD_ENTRYSHIFTINCREMENT 0x01
+#define LCD_ENTRYSHIFTDECREMENT 0x00
+
+// flags for display on/off control
+#define LCD_DISPLAYON 0x04
+#define LCD_DISPLAYOFF 0x00
+#define LCD_CURSORON 0x02
+#define LCD_CURSOROFF 0x00
+#define LCD_BLINKON 0x01
+#define LCD_BLINKOFF 0x00
+
+// flags for display/cursor shift
+#define LCD_DISPLAYMOVE 0x08
+#define LCD_CURSORMOVE 0x00
+#define LCD_MOVERIGHT 0x04
+#define LCD_MOVELEFT 0x00
+
+// flags for function set
+#define LCD_8BITMODE 0x10
+#define LCD_4BITMODE 0x00
+#define LCD_2LINE 0x08
+#define LCD_1LINE 0x00
+#define LCD_5x10DOTS 0x04
+#define LCD_5x8DOTS 0x00
 
 
-// Configuration for MCP23S17_LCD
-// rst  = MCP23S17 RST pin
-// cs   = MCP23S17 CS pin
-// port = MCP23S17 PORT for LCD
-MCP23S17_LCD::MCP23S17_LCD(uint8_t rst, uint8_t cs, uint8_t PORT)
-{
-   init (rst, cs, PORT);
-}
+class MCP23S17_LCD : public Print {
+public:
+  /*
+  MCP23S17_LCD(uint8_t rs, uint8_t enable,
+		uint8_t d0, uint8_t d1, uint8_t d2, uint8_t d3,
+		uint8_t d4, uint8_t d5, uint8_t d6, uint8_t d7);
+  MCP23S17_LCD(uint8_t rs, uint8_t rw, uint8_t enable,
+		uint8_t d0, uint8_t d1, uint8_t d2, uint8_t d3,
+		uint8_t d4, uint8_t d5, uint8_t d6, uint8_t d7);
+  MCP23S17_LCD(uint8_t rs, uint8_t rw, uint8_t enable,
+		uint8_t d0, uint8_t d1, uint8_t d2, uint8_t d3);
+  MCP23S17_LCD(uint8_t rs, uint8_t enable,
+		uint8_t d0, uint8_t d1, uint8_t d2, uint8_t d3);
 
-void MCP23S17_LCD::init(uint8_t rst, uint8_t cs, uint8_t PORT)
-{
-  // NOTE: 4 bits only 
-  // Display is connected as folows
-  // D7 - GPx7
-  // D6 - GPx6
-  // D5 - GPx5
-  // D4 - GPx4
-  // EN - GPx3
-  // RS - GPx2
+  MCP23S17_LCD();
+  */
   
-  // Where GPx can be GPA or GPB, as per MCP23S17 datasheet
-  
-  // Private variables 
-  _rst = rst;
-  _cs = cs;
-  _port = PORT;
-  _displayfunction = LCD_4BITMODE | LCD_1LINE | LCD_5x8DOTS;
-  
-  //begin(16, 1);  
-}
+  MCP23S17_LCD::MCP23S17_LCD(uint8_t rst, uint8_t cs, uint8_t PORT);
 
-void MCP23S17_LCD::begin(uint8_t cols, uint8_t lines, uint8_t dotsize) {
-  expander_setup();	
-	
-  if (lines > 1) {
-   _displayfunction |= LCD_2LINE;
-  }
-  _numlines = lines;
-
-  setRowOffsets(0x00, 0x40, 0x00 + cols, 0x40 + cols);  
-
-  // for some 1 line displays you can select a 10 pixel high font
-  if ((dotsize != LCD_5x8DOTS) && (lines == 1)) {
-     _displayfunction |= LCD_5x10DOTS;
-  }
-
-  // No RW pin
- 
-  // SEE PAGE 45/46 FOR INITIALIZATION SPECIFICATION!
-  // according to datasheet, we need at least 40ms after power rises above 2.7V
-  // before sending commands. Arduino can turn on way before 4.5V so we'll wait 50
-  delayMicroseconds(50000); 
-  // Now we pull both RS and R/W low to begin commands
-  
-  //put the LCD into 4 bit or 8 bit mode
-  // this is according to the hitachi HD44780 datasheet
-  // figure 24, pg 46
-
-  // we start in 8bit mode, try to set 4 bit mode
-  write4bits(0x03, 0);
-  delayMicroseconds(4500); // wait min 4.1ms
-
-  // second try
-  write4bits(0x03, 0);
-  delayMicroseconds(4500); // wait min 4.1ms
+  //TODO: add PWM pins
+  /*
+  void init(uint8_t fourbitmode, uint8_t rs, uint8_t rw, uint8_t enable,
+	    uint8_t d0, uint8_t d1, uint8_t d2, uint8_t d3,
+	    uint8_t d4, uint8_t d5, uint8_t d6, uint8_t d7);
+  */
+  void init(uint8_t rst, uint8_t cs, uint8_t PORT);
     
-  // third go!
-  write4bits(0x03, 0); 
-  delayMicroseconds(150);
+  void begin(uint8_t cols, uint8_t rows, uint8_t charsize = LCD_5x8DOTS);
 
-  // finally, set to 4-bit interface
-  write4bits(0x02, 0); 
- 
-  // finally, set # lines, font size, etc.
-  command(LCD_FUNCTIONSET | _displayfunction);  
+  void clear();
+  void home();
 
-  // turn the display on with no cursor or blinking default
-  _displaycontrol = LCD_DISPLAYON | LCD_CURSOROFF | LCD_BLINKOFF;  
-  display();
+  void noDisplay();
+  void display();
+  void noBlink();
+  void blink();
+  void noCursor();
+  void cursor();
+  void scrollDisplayLeft();
+  void scrollDisplayRight();
+  void leftToRight();
+  void rightToLeft();
+  void autoscroll();
+  void noAutoscroll();
 
-  // clear it off
-  clear();
-
-  // Initialize to default text direction (for romance languages)
-  _displaymode = LCD_ENTRYLEFT | LCD_ENTRYSHIFTDECREMENT;
-  // set the entry mode
-  command(LCD_ENTRYMODESET | _displaymode);
+  void setRowOffsets(int row1, int row2, int row3, int row4);
+  void createChar(uint8_t, uint8_t[]);
+  void setCursor(uint8_t, uint8_t); 
+  virtual size_t write(uint8_t);
+  void command(uint8_t);
   
-}
+  using Print::write;
+private:
+  void send(uint8_t, uint8_t);
+  void write4bits(uint8_t, bool);
+  void write8bits(uint8_t, bool);
+  void expander_setup();
+  void expander_sendByte(uint8_t, uint8_t);
+  void expander_setOutput(uint8_t);
 
-void MCP23S17_LCD::setRowOffsets(int row0, int row1, int row2, int row3)
-{
-  _row_offsets[0] = row0;
-  _row_offsets[1] = row1;
-  _row_offsets[2] = row2;
-  _row_offsets[3] = row3;
-}
-
-/********** high level commands, for the user! */
-void MCP23S17_LCD::clear()
-{
-  command(LCD_CLEARDISPLAY);  // clear display, set cursor position to zero
-  delayMicroseconds(2000);  // this command takes a long time!
-}
-
-void MCP23S17_LCD::home()
-{
-  command(LCD_RETURNHOME);  // set cursor position to zero
-  delayMicroseconds(2000);  // this command takes a long time!
-}
-
-void MCP23S17_LCD::setCursor(uint8_t col, uint8_t row)
-{
-  const size_t max_lines = sizeof(_row_offsets) / sizeof(*_row_offsets);
-  if ( row >= max_lines ) {
-    row = max_lines - 1;    // we count rows starting w/0
-  }
-  if ( row >= _numlines ) {
-    row = _numlines - 1;    // we count rows starting w/0
-  }
+  // uint8_t _rs_pin; // LOW: command.  HIGH: character.
+  // uint8_t _rw_pin; // LOW: write to LCD.  HIGH: read from LCD.
+  // uint8_t _enable_pin; // activated by a HIGH pulse.
+  // uint8_t _data_pins[8];
   
-  command(LCD_SETDDRAMADDR | (col + _row_offsets[row]));
-}
+  uint8_t _cs;
+  uint8_t _rst;
+  uint8_t _port;
+  uint8_t _iodir;
 
-// Turn the display on/off (quickly)
-void MCP23S17_LCD::noDisplay() {
-  _displaycontrol &= ~LCD_DISPLAYON;
-  command(LCD_DISPLAYCONTROL | _displaycontrol);
-}
-void MCP23S17_LCD::display() {
-  _displaycontrol |= LCD_DISPLAYON;
-  command(LCD_DISPLAYCONTROL | _displaycontrol);
-}
+  uint8_t _displayfunction;
+  uint8_t _displaycontrol;
+  uint8_t _displaymode;
 
-// Turns the underline cursor on/off
-void MCP23S17_LCD::noCursor() {
-  _displaycontrol &= ~LCD_CURSORON;
-  command(LCD_DISPLAYCONTROL | _displaycontrol);
-}
-void MCP23S17_LCD::cursor() {
-  _displaycontrol |= LCD_CURSORON;
-  command(LCD_DISPLAYCONTROL | _displaycontrol);
-}
+  uint8_t _initialized;
 
-// Turn on and off the blinking cursor
-void MCP23S17_LCD::noBlink() {
-  _displaycontrol &= ~LCD_BLINKON;
-  command(LCD_DISPLAYCONTROL | _displaycontrol);
-}
-void MCP23S17_LCD::blink() {
-  _displaycontrol |= LCD_BLINKON;
-  command(LCD_DISPLAYCONTROL | _displaycontrol);
-}
+  uint8_t _numlines;
+  uint8_t _row_offsets[4];
 
-// These commands scroll the display without changing the RAM
-void MCP23S17_LCD::scrollDisplayLeft(void) {
-  command(LCD_CURSORSHIFT | LCD_DISPLAYMOVE | LCD_MOVELEFT);
-}
-void MCP23S17_LCD::scrollDisplayRight(void) {
-  command(LCD_CURSORSHIFT | LCD_DISPLAYMOVE | LCD_MOVERIGHT);
-}
+};
 
-// This is for text that flows Left to Right
-void MCP23S17_LCD::leftToRight(void) {
-  _displaymode |= LCD_ENTRYLEFT;
-  command(LCD_ENTRYMODESET | _displaymode);
-}
-
-// This is for text that flows Right to Left
-void MCP23S17_LCD::rightToLeft(void) {
-  _displaymode &= ~LCD_ENTRYLEFT;
-  command(LCD_ENTRYMODESET | _displaymode);
-}
-
-// This will 'right justify' text from the cursor
-void MCP23S17_LCD::autoscroll(void) {
-  _displaymode |= LCD_ENTRYSHIFTINCREMENT;
-  command(LCD_ENTRYMODESET | _displaymode);
-}
-
-// This will 'left justify' text from the cursor
-void MCP23S17_LCD::noAutoscroll(void) {
-  _displaymode &= ~LCD_ENTRYSHIFTINCREMENT;
-  command(LCD_ENTRYMODESET | _displaymode);
-}
-
-// Allows us to fill the first 8 CGRAM locations
-// with custom characters
-void MCP23S17_LCD::createChar(uint8_t location, uint8_t charmap[]) {
-  location &= 0x7; // we only have 8 locations 0-7
-  command(LCD_SETCGRAMADDR | (location << 3));
-  for (int i=0; i<8; i++) {
-    write(charmap[i]);
-  }
-}
-
-/*********** mid level commands, for sending data/cmds */
-
-inline void MCP23S17_LCD::command(uint8_t value) {
-  send(value, LOW);
-}
-
-inline size_t MCP23S17_LCD::write(uint8_t value) {
-  send(value, HIGH);
-  return 1; // assume sucess
-}
-
-/************ low level data pushing commands **********/
-
-// write either command or data
-// low-level function to match other Arduino libraries
-void MCP23S17_LCD::send(uint8_t value, uint8_t mode) {	
-   write8bits(value, (bool) mode);
-}
-
-void MCP23S17_LCD::write4bits(uint8_t value, bool RSbit) {
-    uint8_t packet = (value << 4) | (RSbit << 2);
-    // EN = 0
-    expander_setOutput(packet);
-	delayMicroseconds(5);
-    // EN = 1
-    expander_setOutput(packet | (1<<3));
-    delayMicroseconds(5);
-    // EN = 0
-    expander_setOutput(packet);
-    delayMicroseconds(40);
-}
-  
-void MCP23S17_LCD::write8bits(uint8_t value, bool RSbit) {
-    uint8_t nibbleHigh = value >> 4;
-    uint8_t nibbleLow = value & 0xF;
-    uint8_t packetHigh = (nibbleHigh << 4) | (RSbit << 2);
-    uint8_t packetLow = (nibbleLow << 4) | (RSbit << 2);
-    // EN = 0
-    expander_setOutput(packetHigh);
-    delayMicroseconds(10);
-    // EN = 1
-    expander_setOutput(packetHigh | (1<<3));
-    delayMicroseconds(10);
-    // EN = 0
-    expander_setOutput(packetHigh);
-    delayMicroseconds(10);
-    // EN = 0
-    expander_setOutput(packetLow);
-    delayMicroseconds(10);
-    // EN = 1
-    expander_setOutput(packetLow | (1<<3));
-    delayMicroseconds(10);
-    // EN = 0
-    expander_setOutput(packetLow);
-    delayMicroseconds(40);
-}
-
-// This function confugires the MCP23S17 port expander
-void MCP23S17_LCD::expander_setup(void){
-	// Select the correct IOCON register depending on the indicated port
-	if (_port == PORTA){
-	  _iodir = IODIRA;
-    }
-    if (_port == PORTB){
-	  _iodir = IODIRB;
-    }
-    // Now, configure the expander	
-	// 1. Configure the MCP23S17 control pins
-	pinMode(_rst, OUTPUT);
-    pinMode(_cs, OUTPUT);
-	digitalWrite(_rst, 1);
-    digitalWrite(_cs, 1);
-	// 2. Start SPI
-	SPI.begin();
-	// 3. briefly flash the reset pin
-    digitalWrite(_rst, 0);
-    delayMicroseconds(100);
-    digitalWrite(_rst, 1);
-    delayMicroseconds(100); 	
-	// 4. enable hardware addressing
-    expander_sendByte(IOCON, 0b00001000);
-    delayMicroseconds(50);
-	// configure LCD port direction as output
-    expander_sendByte(_iodir, 0);
-	// set LCD port as 0
-    expander_sendByte(_port, 0);	
-	delayMicroseconds(50);
-	
-	// 5. Debugging only
-	// This code will briefly turn on pin 0 of LCD port
-	// That pin is used to trigger my Saleae logic level analyzer
-	expander_sendByte(_port, 1);	
-	delayMicroseconds(50);
-	expander_sendByte(_port, 0);	
-	delayMicroseconds(50);
-}
-
-
-// Writes to MCP23S17
-void MCP23S17_LCD::expander_sendByte(uint8_t addr, uint8_t tbyte){
-    SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE0));
-    digitalWrite(_cs, 0);
-    SPI.transfer(OPCODEW);
-    SPI.transfer(addr);
-    SPI.transfer(tbyte);
-    digitalWrite(_cs, 1);
-    SPI.endTransaction(); 
-}
-
-// Updates the status of MCP23S17 port
-void MCP23S17_LCD::expander_setOutput(uint8_t output){
-    expander_sendByte(_port, output);
-}
+#endif
