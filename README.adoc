@@ -4,7 +4,9 @@ This library allows an Arduino board to control LiquidCrystal displays (LCDs) ba
 
 https://www.microchip.com/wwwproducts/en/MCP23S17
 
-For more information about this library please visit us at
+Info about the library: https://electronza.com/mcp23s17-lcd-arduino-library/
+
+You may also wish to read
 http://www.arduino.cc/en/Reference/LiquidCrystal
 
 == License ==
